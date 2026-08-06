@@ -71,10 +71,10 @@ The demo builds to a fully static `demo/dist/` — no SSR, no server functions. 
 | Setting | Value |
 | --- | --- |
 | Root directory | *(leave empty — the repo root)* |
-| Build command | `npm ci && npm --prefix demo ci && npm --prefix demo run build` |
+| Build command | `npm install && npm run build` |
 | Output directory | `demo/dist` |
 
-The build must run from the repo root: the demo bundles the package **source** (`../src`), whose own imports (`three`, `mediabunny`) resolve from the root `node_modules` — so both dependency trees must be installed.
+The build must run from the repo root: the demo bundles the package **source** (`../src`), whose own imports (`three`, `mediabunny`) resolve from the root `node_modules` — so both dependency trees must be installed. The root `build` script installs `demo/`'s dependencies itself (`install:demo`), so a bare `npm install && npm run build` on a fresh clone is enough — no second install step in the host's build command.
 
 Connect the GitHub repo in the Cloudflare Pages dashboard with those settings; every push to `main` then deploys automatically. `demo/public/_headers` adds immutable caching for the hashed assets. Any other static host (Netlify, Vercel, S3 + CDN, GitHub Pages) works just as well.
 
