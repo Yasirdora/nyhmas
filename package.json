@@ -30,10 +30,12 @@
   "files": [
     "dist-package"
   ],
+  "workspaces": [
+    "demo"
+  ],
   "scripts": {
     "dev": "npm --prefix demo run dev",
-    "build": "npm run install:demo && npm run build:package && npm --prefix demo run build",
-    "install:demo": "npm --prefix demo install --no-audit --no-fund",
+    "build": "npm run build:package && npm --prefix demo run build",
     "preview": "npm --prefix demo run preview",
     "check": "tsc --noEmit -p tsconfig.json && npm --prefix demo run check",
     "test": "vitest run",

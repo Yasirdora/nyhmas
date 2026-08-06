@@ -3,14 +3,16 @@
 ## Layout
 
 - `src/` — the `nyhmas` npm package source (engine, effects, overlays, export)
-- `demo/` — React + Vite playground; consumes `src/` via a Vite alias, deploys to Cloudflare Pages
-- `examples/` — minimal standalone consumers (React, Svelte) that verify the built package
+- `demo/` — React + Vite playground; an npm workspace, consumes `src/` via a Vite alias, deploys to Cloudflare Pages
+- `examples/` — minimal standalone consumers (React, Svelte) that verify the built package. Deliberately *not* workspaces: they install `nyhmas` as `file:../..` to exercise the published artifact like a real consumer.
 
 ## Setup
 
 ```bash
-npm install && npm --prefix demo install
+npm install
 ```
+
+One install at the repo root covers `demo/` too (npm workspace, single lockfile). `examples/` install separately.
 
 ## Commands (repo root)
 

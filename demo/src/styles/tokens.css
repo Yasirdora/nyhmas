@@ -73,7 +73,6 @@
 .glass {
   background: var(--glass-bg);
   backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
   border: 1px solid var(--glass-border);
   box-shadow: var(--glass-shadow), inset 0 1px 0 var(--glass-highlight);
   border-radius: var(--r-lg);
@@ -108,7 +107,6 @@
     background var(--dur-fast) var(--ease-out),
     transform var(--dur-fast) var(--ease-out),
     border-color var(--dur-fast) var(--ease-out);
-  -webkit-backdrop-filter: blur(var(--glass-blur));
   backdrop-filter: blur(var(--glass-blur));
 }
 .btn:hover {

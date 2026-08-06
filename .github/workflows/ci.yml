@@ -15,12 +15,9 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: |
-            package-lock.json
-            demo/package-lock.json
+          cache-dependency-path: package-lock.json
 
       - run: npm ci
-      - run: npm --prefix demo ci
 
       - name: Lint
         run: npm run lint

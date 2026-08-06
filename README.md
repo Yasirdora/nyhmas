@@ -74,7 +74,7 @@ The demo builds to a fully static `demo/dist/` — no SSR, no server functions. 
 | Build command | `npm install && npm run build` |
 | Output directory | `demo/dist` |
 
-The build must run from the repo root: the demo bundles the package **source** (`../src`), whose own imports (`three`, `mediabunny`) resolve from the root `node_modules` — so both dependency trees must be installed. The root `build` script installs `demo/`'s dependencies itself (`install:demo`), so a bare `npm install && npm run build` on a fresh clone is enough — no second install step in the host's build command.
+Those are Cloudflare's defaults for a Vite project except for the output directory, which has to point at the demo. `demo/` is an npm workspace, so the single root `npm install` installs it too — the demo bundles the package **source** (`../src`), whose own imports (`three`, `mediabunny`) resolve from the one hoisted `node_modules`.
 
 Connect the GitHub repo in the Cloudflare Pages dashboard with those settings; every push to `main` then deploys automatically. `demo/public/_headers` adds immutable caching for the hashed assets. Any other static host (Netlify, Vercel, S3 + CDN, GitHub Pages) works just as well.
 
