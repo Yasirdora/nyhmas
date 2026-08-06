@@ -1,0 +1,25 @@
+@import 'tailwindcss';
+@import './tokens.css';
+
+/* NYHMAS — global base. Design tokens live in tokens.css. */
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--stage);
+  color: var(--text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+::selection {
+  background: var(--accent);
+  color: #000;
+}
