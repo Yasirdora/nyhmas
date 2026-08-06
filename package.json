@@ -1,0 +1,65 @@
+{
+  "name": "nyhmas",
+  "type": "module",
+  "version": "0.2.0",
+  "description": "Audio-reactive particle visualizers for the web (WebGL, three.js) \u2014 engine, effects, overlays, and a deterministic export path.",
+  "keywords": [
+    "audio-visualizer",
+    "visualizer",
+    "audio-reactive",
+    "webgl",
+    "threejs",
+    "particles",
+    "music"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "sideEffects": false,
+  "main": "./dist-package/index.js",
+  "module": "./dist-package/index.js",
+  "types": "./dist-package/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist-package/index.d.ts",
+      "import": "./dist-package/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist-package"
+  ],
+  "scripts": {
+    "dev": "npm --prefix demo run dev",
+    "build": "npm run build:package && npm --prefix demo run build",
+    "preview": "npm --prefix demo run preview",
+    "check": "tsc --noEmit -p tsconfig.json && npm --prefix demo run check",
+    "test": "vitest run",
+    "lint": "biome check",
+    "lint:fix": "biome check --write",
+    "build:package": "vite build --config vite.package.config.mjs && tsc -p tsconfig.package.json",
+    "prepublishOnly": "npm run lint && npm test && npm run build:package"
+  },
+  "peerDependencies": {
+    "three": ">=0.170.0 <1.0.0"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.3",
+    "@types/three": "^0.185.1",
+    "three": "^0.185.1",
+    "typescript": "^6.0.3",
+    "vite": "^8.2.0",
+    "vitest": "^4.1.10"
+  },
+  "dependencies": {
+    "mediabunny": "^1.52.3"
+  },
+  "author": "Yasirdora",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Yasirdora/nyhmas.git"
+  },
+  "homepage": "https://github.com/Yasirdora/nyhmas#readme",
+  "bugs": "https://github.com/Yasirdora/nyhmas/issues"
+}
