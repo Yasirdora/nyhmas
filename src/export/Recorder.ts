@@ -1,0 +1,114 @@
+/**
+ * Tier-1 video export: real-time capture.
+ *
+ * Grabs the live canvas via `captureStream`, muxes in the WebAudio stream, and
+ * feeds both to a MediaRecorder. Simple and universal — quality tracks
+ * real-time performance. The deterministic, frame-perfect Tier-2 exporter
+ * (WebCodecs, see OfflineRenderer) is preferred where supported; this is the
+ * always-available option.
+ *
+ * Caveat: the captured canvas is driven by requestAnimationFrame, which is
+ * suspended in hidden tabs — recording in the background freezes the video
+ * while audio continues. The UI warns the user to keep the tab visible.
+ */
+
+interface MimeChoice {
+  mimeType: string;
+  ext: 'mp4' | 'webm';
+}
+
+const MIME_CANDIDATES: MimeChoice[] = [
+  { mimeType: 'video/mp4;codecs=avc1.42E01E,mp4a.40.2', ext: 'mp4' },
+  { mimeType: 'video/mp4', ext: 'mp4' },
+  { mimeType: 'video/webm;codecs=vp9,opus', ext: 'webm' },
+  { mimeType: 'video/webm;codecs=vp8,opus', ext: 'webm' },
+  { mimeType: 'video/webm', ext: 'webm' },
+];
+
+function pickMime(): MimeChoice | null {
+  if (typeof MediaRecorder === 'undefined') return null;
+  return MIME_CANDIDATES.find((c) => MediaRecorder.isTypeSupported(c.mimeType)) ?? null;
+}
+
+export interface RecorderOptions {
+  fps?: number;
+  videoBitsPerSecond?: number;
+}
+
+export class Recorder {
+  private recorder: MediaRecorder | null = null;
+  private chunks: Blob[] = [];
+  private readonly choice: MimeChoice | null;
+  private baseName = 'nyhmas';
+
+  /** Called with the finished file once recording stops. */
+  onComplete?: (blob: Blob, filename: string) => void;
+
+  constructor(
+    private readonly canvas: HTMLCanvasElement,
+    private readonly audioStream: MediaStream,
+    private readonly options: RecorderOptions = {},
+  ) {
+    this.choice = pickMime();
+  }
+
+  get supported(): boolean {
+    return this.choice !== null;
+  }
+
+  get container(): string {
+    return this.choice?.ext ?? 'webm';
+  }
+
+  get recording(): boolean {
+    return this.recorder?.state === 'recording';
+  }
+
+  start(baseName: string): void {
+    if (!this.choice) throw new Error('MediaRecorder is not supported in this browser.');
+    this.baseName = baseName || 'nyhmas';
+    this.chunks = [];
+
+    const fps = this.options.fps ?? 60;
+    const videoStream = this.canvas.captureStream(fps);
+    // Hint the encoder that this is continuous motion (a visualizer), so it
+    // optimizes for smooth frame delivery over static-detail preservation.
+    for (const track of videoStream.getVideoTracks()) track.contentHint = 'motion';
+    const combined = new MediaStream([
+      ...videoStream.getVideoTracks(),
+      ...this.audioStream.getAudioTracks(),
+    ]);
+
+    this.recorder = new MediaRecorder(combined, {
+      mimeType: this.choice.mimeType,
+      videoBitsPerSecond: this.options.videoBitsPerSecond ?? 12_000_000,
+    });
+    this.recorder.ondataavailable = (e) => {
+      if (e.data.size > 0) this.chunks.push(e.data);
+    };
+    this.recorder.onstop = () => {
+      const blob = new Blob(this.chunks, { type: this.choice!.mimeType });
+      this.onComplete?.(blob, `${this.baseName}.${this.choice!.ext}`);
+    };
+    this.recorder.start(100);
+  }
+
+  stop(): void {
+    if (this.recorder && this.recorder.state !== 'inactive') {
+      this.recorder.stop();
+    }
+  }
+}
+
+/** Trigger a browser download for a blob. */
+export function downloadBlob(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  // Revoke after the download has a chance to start.
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
+}
