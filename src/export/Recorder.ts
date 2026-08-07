@@ -18,12 +18,27 @@ interface MimeChoice {
 }
 
 const MIME_CANDIDATES: MimeChoice[] = [
-  { mimeType: 'video/mp4;codecs=avc1.42E01E,mp4a.40.2', ext: 'mp4' },
+  // High profile first: CABAC + B-frames buy ~30% quality per bit over the
+  // Baseline profile — significant for high-entropy particle content.
+  { mimeType: 'video/mp4;codecs=avc1.640034,mp4a.40.2', ext: 'mp4' }, // High @ L5.2
+  { mimeType: 'video/mp4;codecs=avc1.640033,mp4a.40.2', ext: 'mp4' }, // High @ L5.1
+  { mimeType: 'video/mp4;codecs=avc1.42E01E,mp4a.40.2', ext: 'mp4' }, // Baseline fallback
   { mimeType: 'video/mp4', ext: 'mp4' },
   { mimeType: 'video/webm;codecs=vp9,opus', ext: 'webm' },
   { mimeType: 'video/webm;codecs=vp8,opus', ext: 'webm' },
   { mimeType: 'video/webm', ext: 'webm' },
 ];
+
+/**
+ * Bitrate guidance for particle-visual content. Thousands of tiny bright dots
+ * on black are the highest-entropy input a video codec meets — far above
+ * broadcast norms — so bits-per-pixel-per-frame must run high (0.15 bpp) to
+ * keep the sparkle from smearing into mush. Floored for small canvases,
+ * capped so file sizes stay sane.
+ */
+export function recommendedVideoBitrate(width: number, height: number, fps: number): number {
+  return Math.min(Math.max(width * height * fps * 0.15, 12_000_000), 50_000_000);
+}
 
 function pickMime(): MimeChoice | null {
   if (typeof MediaRecorder === 'undefined') return null;
@@ -81,7 +96,9 @@ export class Recorder {
 
     this.recorder = new MediaRecorder(combined, {
       mimeType: this.choice.mimeType,
-      videoBitsPerSecond: this.options.videoBitsPerSecond ?? 12_000_000,
+      videoBitsPerSecond:
+        this.options.videoBitsPerSecond ??
+        recommendedVideoBitrate(this.canvas.width, this.canvas.height, fps),
     });
     this.recorder.ondataavailable = (e) => {
       if (e.data.size > 0) this.chunks.push(e.data);

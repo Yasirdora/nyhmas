@@ -20,7 +20,7 @@ export class Aura extends ParticleEffect {
     id: 'aura',
     title: 'Aura',
     kind: '3d',
-    description: 'A sphere of flowing light — luminous currents swirling like slow silk.',
+    description: 'A curtain of flowing light — luminous ribbons waving like the northern lights.',
   };
 
   constructor(width: number, height: number) {
@@ -30,14 +30,13 @@ export class Aura extends ParticleEffect {
       geometry: createAuraGeometry,
       countByTier: { low: 9000, medium: 16_000, high: 22_000 },
       scale: 2.1,
-      tilt: AURA_TILT,
-      spin: 0.06,
-      beatPop: 0.06,
+      tilt: 0.05,
+      spin: 0,
+      beatPop: 0.04,
       spectrum: true,
-      // Gold's exact bloom — the fold lines and equatorial stream catch it.
-      bloom: { strength: 2.0, radius: 1.6, threshold: 1.0 },
-      // The sphere flows on its own (deterministically) — no auto-rotate.
-      scene: { cameraZ: 6, autoRotate: false, fogDensity: 0.02 },
+      // Bloom tuned for silky curtain glow
+      bloom: { strength: 2.2, radius: 1.8, threshold: 0.8 },
+      scene: { cameraZ: 5.5, autoRotate: false, fogDensity: 0.02 },
     });
   }
 }
@@ -53,27 +52,28 @@ function createAuraGeometry(count: number): THREE.BufferGeometry {
   const homes = new Float32Array(count * 3);
   const infos = new Float32Array(count * 3);
   const randoms = new Float32Array(count);
-  const goldenAngle = Math.PI * (3 - Math.sqrt(5));
 
   for (let i = 0; i < count; i++) {
-    // Fibonacci-even directions, with a light jitter so shells don't moiré.
-    const yy = 1 - (i / (count - 1)) * 2;
-    const rr = Math.sqrt(Math.max(0, 1 - yy * yy));
-    const theta = goldenAngle * i;
-    const dx = Math.cos(theta) * rr + (Math.random() - 0.5) * 0.03;
-    const dy = yy + (Math.random() - 0.5) * 0.03;
-    const dz = Math.sin(theta) * rr + (Math.random() - 0.5) * 0.03;
-    const len = Math.max(Math.hypot(dx, dy, dz), 1e-4);
+    // Distribute particles across a wide ribbon/curtain
+    const x = (Math.random() - 0.5) * 10.0;
+    
+    // Y goes from bottom to top, densely packed at the bottom for the bright aurora edge
+    const yFactor = Math.random();
+    const y = (Math.pow(yFactor, 1.5) - 0.5) * 4.0; 
+    
+    // Z is a small random thickness
+    const z = (Math.random() - 0.5) * 0.2;
 
-    positions[i * 3] = dx;
-    positions[i * 3 + 1] = dy;
-    positions[i * 3 + 2] = dz;
-    homes[i * 3] = dx / len;
-    homes[i * 3 + 1] = dy / len;
-    homes[i * 3 + 2] = dz / len;
-    // Shells from the core out, biased outward so the flowing surface reads
-    // lush instead of dusty — a thinner hot heart remains inside.
-    infos[i * 3] = 0.5 + Math.random() ** 0.6 * 0.5;
+    positions[i * 3] = x;
+    positions[i * 3 + 1] = y;
+    positions[i * 3 + 2] = z;
+    
+    // In homes, we store the normalized height in y for color mapping
+    homes[i * 3] = x;
+    homes[i * 3 + 1] = yFactor;
+    homes[i * 3 + 2] = z;
+    
+    infos[i * 3] = Math.random();
     infos[i * 3 + 1] = Math.random();
     infos[i * 3 + 2] = Math.random();
     randoms[i] = Math.random();

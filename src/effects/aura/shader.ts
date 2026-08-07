@@ -1,14 +1,8 @@
 /**
- * GLSL for "Aura" — a sphere of flowing light, built on the proven particle
- * recipe: one Points draw call, all motion in the vertex shader, soft
- * additive sprites, HDR feeding the bloom pass.
- *
- * The fluid feel comes from shear: nested shells stream around the sphere at
- * different angular speeds (fast at the equator, creeping at the poles),
- * while each particle's latitude wanders on slow simplex noise, so the bands
- * braid and fold like silk instead of rotating as a rigid body. Bass speeds
- * and swells the currents, the spectrum envelope brightens them by
- * longitude, treble shimmers, and the beat pops the whole sphere.
+ * GLSL for "Aura" (Aurora) — a stunning, multi-layered aurora curtain.
+ * Features 3 nested atmospheric layers (front green/cyan, mid teal/purple, back purple/magenta)
+ * drifting and folding at dynamic speeds, with rising vertical ray streaks
+ * and beautiful depth parallax.
  */
 import { simplexNoiseGLSL } from '../goldParticles/shader';
 
@@ -20,56 +14,77 @@ export const vertexShader = /* glsl */ `
   uniform float uPixelRatio;
   uniform sampler2D uSpec;
 
-  /** Unit direction on the sphere (the particle's home shell point). */
+  /** Home coordinates on flat curtain plane. */
   attribute vec3 aHome;
-  /** x: shell radius (0.5..1), y/z: noise seeds. */
+  /** x/y/z: random noise seeds. */
   attribute vec3 aInfo;
   attribute float aRand;
 
-  varying float vBand;
-  varying float vChurn;
-  varying float vSpec;
-  varying float vTwinkle;
-  varying float vViewZ;
+  varying float vBand;      // Normalized height (0..1)
+  varying float vChurn;     // Ray/intensity detail
+  varying float vSpec;      // Spectrum amplitude
+  varying float vTwinkle;   // Twinkle variance
+  varying float vViewZ;     // Depth for camera effects
+  varying float vLayer;     // Curtain layer index (0, 1, 2)
 
   ${simplexNoiseGLSL}
 
   void main() {
-    float r = aInfo.x;
-    float lat0 = asin(clamp(aHome.y, -1.0, 1.0));
-    float lon0 = atan(aHome.z, aHome.x);
+    float x0 = aHome.x; // Range: -5.0 to 5.0
+    float yNormalized = aHome.y; // 0.0 (bottom) to 1.0 (top)
+    float z0 = aHome.z;
 
-    // Shear: equator streams fastest, poles creep — the fluid look. Bass
-    // speeds every current.
-    float swirl = 0.3 + uBass * 0.2;
-    float speed = swirl / (0.35 + lat0 * lat0 * 2.2);
-    float lon = lon0 + uTime * speed;
+    // Split into 3 layered curtains for jaw-dropping depth parallax
+    float layer = floor(aRand * 3.0);
+    float phase = layer * 15.71;
 
-    // Bands wander and braid on slow noise — silk, never rigid.
-    float wander = snoise(vec3(aHome.x * 2.0 + aInfo.y * 10.0, aHome.y * 2.0, uTime * 0.15));
-    float lat = lat0 + wander * 0.13;
+    // Curved Auroral Arch: wraps around the camera in depth
+    float arcAngle = (x0 / 5.0) * 0.8;
+    float arcRadius = 4.5 + (layer - 1.0) * 0.45; // Offset layer depths
+    
+    float baseArcX = sin(arcAngle) * arcRadius;
+    float baseArcZ = cos(arcAngle) * arcRadius - arcRadius;
 
-    // Radial churn: shells breathe with bass, ripple with slow noise.
-    float churn = snoise(vec3(aHome.x * 3.0, aHome.y * 3.0 + aInfo.z * 20.0, uTime * 0.22));
-    float rr = r * (1.0 + uBass * 0.12 + churn * (0.03 + uBass * 0.06));
+    // Wave speed and horizontal drift per layer
+    float waveSpeed = 0.07 + layer * 0.04 + uBass * 0.08;
+    float wave1 = snoise(vec3(x0 * 0.35 - uTime * waveSpeed, yNormalized * 0.2 + phase, uTime * 0.04));
+    float wave2 = snoise(vec3(x0 * 1.1 + uTime * (waveSpeed * 1.4), yNormalized * 0.5 + phase, uTime * 0.08));
+    
+    // Vertical ray strands that rise upward along the curtain
+    float rayFreq = 7.0 + layer * 2.0;
+    float rayRiseSpeed = 0.4 + layer * 0.25;
+    float rayNoise = snoise(vec3(x0 * rayFreq, yNormalized * 1.4 - uTime * rayRiseSpeed, phase));
+    float rayIntensity = max(0.0, rayNoise);
 
-    vec3 newPos = vec3(cos(lat) * cos(lon), sin(lat), cos(lat) * sin(lon)) * rr;
+    // Total displacement: waving folds and ray offsets
+    float waveZ = (wave1 * 1.0 + wave2 * 0.3) * (0.25 + yNormalized * 0.75);
+    
+    // Giant slow height wave
+    float heightWave = snoise(vec3(x0 * 0.4 + phase, uTime * 0.07, 0.0)) * 0.25;
+    
+    // Bass swells the curtain height
+    float finalY = (yNormalized * (3.1 + uBass * 0.9) - 1.55) + heightWave;
 
-    // The currents brighten where the music is loud, by longitude.
-    float spec = texture2D(uSpec, vec2(fract(lon / 6.2831853), 0.5)).r;
+    float finalX = baseArcX + rayIntensity * 0.06;
+    float finalZ = baseArcZ + z0 + waveZ;
 
-    vBand = lat0;
-    vChurn = churn;
+    vec3 newPos = vec3(finalX, finalY, finalZ);
+
+    // Audio reactivity - spectrum envelope along the arch
+    float spec = texture2D(uSpec, vec2(fract((x0 + 5.0) / 10.0), 0.5)).r;
+
+    vBand = yNormalized;
+    vChurn = rayIntensity * (0.7 + wave2 * 0.3);
     vSpec = spec;
-    vTwinkle = 0.8 + 0.2 * sin(uTime * (1.5 + aRand * 3.0) + aRand * 39.0);
+    vTwinkle = 0.8 + 0.2 * sin(uTime * (2.0 + aRand * 4.0) + aRand * 50.0);
+    vLayer = layer;
 
     vec4 mvPosition = modelViewMatrix * vec4(newPos, 1.0);
     gl_Position = projectionMatrix * mvPosition;
     vViewZ = -mvPosition.z;
 
-    // gl_PointSize is in device pixels: uPixelRatio keeps apparent size
-    // constant across display densities and adaptive-resolution changes.
-    float size = mix(5.0, 8.0, aRand) * (1.0 + uTreble * 0.9 + spec * 0.4 + uBeat * 0.3);
+    // Particles stretch larger where the rays are active and music is pumping
+    float size = mix(3.5, 6.5, aRand) * (1.0 + uTreble * 1.0 + spec * 0.6 + rayIntensity * 0.3);
     gl_PointSize = size * uPixelRatio * (1.0 / -mvPosition.z);
   }
 `;
@@ -86,30 +101,64 @@ export const fragmentShader = /* glsl */ `
   varying float vSpec;
   varying float vTwinkle;
   varying float vViewZ;
+  varying float vLayer;
 
   void main() {
     vec2 center = gl_PointCoord - 0.5;
     float dist = length(center);
     if (dist > 0.5) discard;
-    float alpha = 1.0 - smoothstep(0.25, 0.5, dist);
+    
+    // Silky smooth light particles
+    float alpha = exp(-dist * dist * 12.0);
 
-    // Flowing bands: poles cool blue, mid-latitudes ember, the equatorial
-    // stream gold — with churn stirring white into the fold lines.
-    float t = clamp(1.0 - abs(vBand) * 1.05 + vChurn * 0.2, 0.0, 1.0);
-    vec3 color = t < 0.5
-      ? mix(uColorD, uColorC, t * 2.0)
-      : mix(uColorC, uColorB, (t - 0.5) * 2.0);
-    if (vChurn > 0.4) {
-      color = mix(color, uColorA, (vChurn - 0.4) * 1.5);
+    // Multi-spectral Aurora Palette:
+    // Layer 0 (Back): Purple/Indigo to Magenta/Pink
+    // Layer 1 (Middle): Teal/Cyan to Purple
+    // Layer 2 (Front): Bright Neon Green to Cyan
+    vec3 green = vec3(0.02, 1.0, 0.3);
+    vec3 teal = vec3(0.0, 0.9, 0.7);
+    vec3 cyan = vec3(0.0, 0.75, 1.0);
+    vec3 purple = vec3(0.55, 0.1, 0.95);
+    vec3 magenta = vec3(0.95, 0.1, 0.55);
+    vec3 whiteCore = vec3(0.9, 1.0, 0.95);
+
+    vec3 bottomColor;
+    vec3 topColor;
+
+    if (vLayer == 0.0) {
+      bottomColor = purple;
+      topColor = magenta;
+    } else if (vLayer == 1.0) {
+      bottomColor = teal;
+      topColor = purple;
+    } else {
+      bottomColor = green;
+      topColor = cyan;
     }
 
-    // Where the music lifts the currents, they warm toward white-gold.
-    color = mix(color, uColorA * vec3(1.15, 1.05, 0.85), vSpec * vSpec * 0.5);
+    // Blend gradient bottom-to-top
+    vec3 color = mix(bottomColor, topColor, vBand);
 
-    // Far side dims into the dark; treble wakes the shimmer.
-    float depth = smoothstep(5.0, 8.5, vViewZ);
-    float lum = mix(1.0, 0.5, depth) * mix(1.0, vTwinkle, 0.2 + uTreble * 0.6);
+    // Fold/Ray highlights
+    if (vChurn > 0.3) {
+      color = mix(color, whiteCore, (vChurn - 0.3) * 1.2);
+    }
 
-    gl_FragColor = vec4(color * lum, alpha * 0.9);
+    // Reactivity boosts core brightness
+    color = mix(color, whiteCore * 1.4, vSpec * vSpec * 0.7);
+
+    // Realistic atmospheric fade-off
+    float topFade = 1.0 - smoothstep(0.65, 1.0, vBand);
+    float bottomFade = smoothstep(0.0, 0.08, vBand);
+    
+    float layerAlpha = vLayer == 0.0 ? 0.55 : (vLayer == 1.0 ? 0.8 : 1.0);
+    
+    alpha *= topFade * bottomFade * layerAlpha;
+
+    // Distance attenuation and twinkle shimmer
+    float depth = smoothstep(4.0, 8.5, vViewZ);
+    float lum = mix(1.0, 0.55, depth) * mix(1.0, vTwinkle, 0.15 + uTreble * 0.6);
+
+    gl_FragColor = vec4(color * lum, alpha * 0.85);
   }
 `;

@@ -10,6 +10,7 @@ import { OfflineAudioSource } from '../engine/audio/OfflineAudioSource';
 import { FrameClock } from '../engine/Clock';
 import type { Engine } from '../engine/Engine';
 import { Compositor } from './Compositor';
+import { recommendedVideoBitrate } from './Recorder';
 
 /**
  * Tier-2 export: deterministic, frame-perfect render.
@@ -60,7 +61,6 @@ export class OfflineRenderer {
     // 60fps to match the live look — all reaction smoothing is tuned per-frame
     // at 60, so rendering at 30 made motion choppy AND reactions sluggish.
     const fps = this.options.fps ?? 60;
-    const bitrate = this.options.videoBitrate ?? 16_000_000;
     const onProgress = this.options.onProgress ?? (() => {});
 
     const source = new OfflineAudioSource(this.buffer);
@@ -77,6 +77,10 @@ export class OfflineRenderer {
 
     try {
       const canvas = this.engine.canvas;
+      // Bitrate scales with resolution + fps: particle fields are
+      // high-entropy content, a fixed default starves the encoder at 4K.
+      const bitrate =
+        this.options.videoBitrate ?? recommendedVideoBitrate(canvas.width, canvas.height, fps);
 
       // With overlays active, frames are composited (WebGL + overlay) before
       // encoding so titles/lyrics burn into the video.
