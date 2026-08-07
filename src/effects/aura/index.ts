@@ -3,9 +3,6 @@ import type { EffectMeta } from '../../engine/effects/Effect';
 import { ParticleEffect } from '../../engine/effects/ParticleEffect';
 import { fragmentShader, vertexShader } from './shader';
 
-/** Fixed tilt so the bands wrap visibly around the sphere — sells the 3D. */
-const AURA_TILT = 0.42;
-
 /**
  * "Aura" — a sphere of flowing light. Nested shells of particles stream
  * around the sphere at sheared angular speeds (equator fast, poles slow)
@@ -56,23 +53,23 @@ function createAuraGeometry(count: number): THREE.BufferGeometry {
   for (let i = 0; i < count; i++) {
     // Distribute particles across a wide ribbon/curtain
     const x = (Math.random() - 0.5) * 10.0;
-    
+
     // Y goes from bottom to top, densely packed at the bottom for the bright aurora edge
     const yFactor = Math.random();
-    const y = (Math.pow(yFactor, 1.5) - 0.5) * 4.0; 
-    
+    const y = (yFactor ** 1.5 - 0.5) * 4.0;
+
     // Z is a small random thickness
     const z = (Math.random() - 0.5) * 0.2;
 
     positions[i * 3] = x;
     positions[i * 3 + 1] = y;
     positions[i * 3 + 2] = z;
-    
+
     // In homes, we store the normalized height in y for color mapping
     homes[i * 3] = x;
     homes[i * 3 + 1] = yFactor;
     homes[i * 3 + 2] = z;
-    
+
     infos[i * 3] = Math.random();
     infos[i * 3 + 1] = Math.random();
     infos[i * 3 + 2] = Math.random();
