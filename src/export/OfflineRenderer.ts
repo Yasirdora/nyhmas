@@ -10,6 +10,7 @@ import { OfflineAudioSource } from '../engine/audio/OfflineAudioSource';
 import { FrameClock } from '../engine/Clock';
 import type { Engine } from '../engine/Engine';
 import { Compositor } from './Compositor';
+import { applySrgbColorTag } from './mp4ColorTag';
 import { recommendedVideoBitrate } from './Recorder';
 
 /**
@@ -143,8 +144,13 @@ export class OfflineRenderer {
 
       const buffer = output.target.buffer;
       if (!buffer) throw new Error('Export finalized without producing a file.');
+      // Tag sRGB so color-managed players (QuickTime/ColorSync) use the sRGB
+      // EOTF instead of the broadcast one — otherwise the video looks dull and
+      // desaturated next to the live page. WebCodecs canvas encodes use the
+      // BT.709 matrix (only relevant if a colr box must be inserted).
+      const tagged = applySrgbColorTag(buffer, { insertMatrix: 'bt709' });
       return {
-        blob: new Blob([buffer], { type: 'video/mp4' }),
+        blob: new Blob([tagged], { type: 'video/mp4' }),
         filename: `${baseName}.mp4`,
       };
     } catch (err) {

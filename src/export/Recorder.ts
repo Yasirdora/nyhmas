@@ -12,6 +12,8 @@
  * while audio continues. The UI warns the user to keep the tab visible.
  */
 
+import { applySrgbColorTag } from './mp4ColorTag';
+
 interface MimeChoice {
   mimeType: string;
   ext: 'mp4' | 'webm';
@@ -104,10 +106,22 @@ export class Recorder {
       if (e.data.size > 0) this.chunks.push(e.data);
     };
     this.recorder.onstop = () => {
-      const blob = new Blob(this.chunks, { type: this.choice!.mimeType });
-      this.onComplete?.(blob, `${this.baseName}.${this.choice!.ext}`);
+      void this.finish();
     };
     this.recorder.start(100);
+  }
+
+  private async finish(): Promise<void> {
+    const choice = this.choice!;
+    let blob = new Blob(this.chunks, { type: choice.mimeType });
+    if (choice.ext === 'mp4') {
+      // Chrome tags canvas captures as BT.601/BT.709, which QuickTime renders
+      // with a broadcast EOTF — dull next to the live page. Retag as sRGB.
+      // Chrome's MediaRecorder converts canvas RGB with the BT.601 matrix.
+      const tagged = applySrgbColorTag(await blob.arrayBuffer());
+      blob = new Blob([tagged], { type: choice.mimeType });
+    }
+    this.onComplete?.(blob, `${this.baseName}.${choice.ext}`);
   }
 
   stop(): void {
