@@ -59,7 +59,12 @@ export {
   type OfflineRenderOptions,
   offlineExportSupported,
 } from './export/OfflineRenderer';
-export { downloadBlob, Recorder, type RecorderOptions, recommendedVideoBitrate } from './export/Recorder';
+export {
+  downloadBlob,
+  Recorder,
+  type RecorderOptions,
+  recommendedVideoBitrate,
+} from './export/Recorder';
 // ---- Effects ---------------------------------------------------------------
 export {
   DEFAULT_EFFECT_ID,
